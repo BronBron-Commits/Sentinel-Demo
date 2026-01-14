@@ -1,0 +1,2 @@
+/usr/bin/ar qc libsimcore.a CMakeFiles/simcore.dir/src/sim_update.cpp.o CMakeFiles/simcore.dir/src/sim_runner.cpp.o CMakeFiles/simcore.dir/src/sim_hash.cpp.o CMakeFiles/simcore.dir/src/sim_input_io.cpp.o
+/usr/bin/ranlib libsimcore.a
