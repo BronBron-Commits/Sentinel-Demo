@@ -180,25 +180,70 @@ int main(int argc, char **argv)
             glPopMatrix();
         }
 
-        /* ---------- CURRENT PROJECTILE + MARKER ---------- */
-        glColor4f(1,1,1,1);
-        glPushMatrix();
-        glTranslatef(
-            view.x.to_double(),
-            view.y.to_double(),
+        /* ---------- CURRENT PROJECTILE + MARKERS ---------- */
+glPushMatrix();
+glTranslatef(
+    view.x.to_double(),
+    view.y.to_double(),
+    0.0f
+);
+
+/* cube */
+glColor4f(1,1,1,1);
+draw_cube(4.0f);
+
+/* apex / impact ring */
+if (blink) {
+    glBegin(GL_LINE_LOOP);
+    for (int j = 0; j < 32; ++j) {
+        float a = (float)j / 32.0f * 2.0f * 3.1415926f;
+        glVertex3f(cosf(a) * 6.0f, sinf(a) * 6.0f, 0.0f);
+    }
+    glEnd();
+}
+
+/* velocity vector arrow */
+{
+    const double vx = view.vx.to_double();
+    const double vy = view.vy.to_double();
+
+    const double speed = std::sqrt(vx * vx + vy * vy);
+    if (speed > 1e-6) {
+        const double scale = 8.0;  // visual scaling factor
+        const double dx = vx * scale;
+        const double dy = vy * scale;
+
+        glColor4f(0.0f, 1.0f, 0.0f, 1.0f); // green
+
+        /* shaft */
+        glBegin(GL_LINES);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(dx, dy, 0.0f);
+        glEnd();
+
+        /* arrow head */
+        const double nx = dx / speed;
+        const double ny = dy / speed;
+        const double ah = 2.0; // arrow head size
+
+        glBegin(GL_TRIANGLES);
+        glVertex3f(dx, dy, 0.0f);
+        glVertex3f(
+            dx - nx * ah - ny * ah * 0.5,
+            dy - ny * ah + nx * ah * 0.5,
             0.0f
         );
-        draw_cube(4.0f);
+        glVertex3f(
+            dx - nx * ah + ny * ah * 0.5,
+            dy - ny * ah - nx * ah * 0.5,
+            0.0f
+        );
+        glEnd();
+    }
+}
 
-        if (blink) {
-            glBegin(GL_LINE_LOOP);
-            for (int j = 0; j < 32; ++j) {
-                float a = (float)j / 32.0f * 2.0f * 3.1415926f;
-                glVertex3f(cosf(a) * 6.0f, sinf(a) * 6.0f, 0.0f);
-            }
-            glEnd();
-        }
-        glPopMatrix();
+glPopMatrix();
+
 
         /* ---------- OVERLAY ---------- */
         glMatrixMode(GL_PROJECTION);
