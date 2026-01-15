@@ -51,7 +51,7 @@ int main(int argc, char **argv)
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         WINDOW_W, WINDOW_H,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
+        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP
     );
 
     SDL_GLContext ctx = SDL_GL_CreateContext(win);
@@ -73,20 +73,24 @@ int main(int argc, char **argv)
 
     while (running) {
         while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) running = false;
+            if (e.type == SDL_QUIT)
+                running = false;
+
             if (e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_SPACE) paused = !paused;
+                if (e.key.keysym.sym == SDLK_SPACE)
+                    paused = !paused;
 
-if (e.key.keysym.sym == SDLK_LEFT) {
-    paused = true;
-    if (view_tick > 0) view_tick--;
-}
+                if (e.key.keysym.sym == SDLK_LEFT) {
+                    paused = true;
+                    if (view_tick > 0)
+                        view_tick--;
+                }
 
-if (e.key.keysym.sym == SDLK_RIGHT) {
-    paused = true;
-    if (view_tick + 1 < history.size()) view_tick++;
-}
-
+                if (e.key.keysym.sym == SDLK_RIGHT) {
+                    paused = true;
+                    if (view_tick + 1 < history.size())
+                        view_tick++;
+                }
             }
         }
 
@@ -102,7 +106,9 @@ if (e.key.keysym.sym == SDLK_RIGHT) {
             }
         }
 
-        if (history.empty()) continue;
+        if (history.empty())
+            continue;
+
         const SimState &view = history[view_tick];
 
         glClearColor(0.02f, 0.02f, 0.04f, 1.0f);
@@ -116,17 +122,14 @@ if (e.key.keysym.sym == SDLK_RIGHT) {
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
-        // Camera fixed, looking across +X
         gluLookAt(
-            -200.0, 120.0, 300.0,   // camera position
-             300.0,   0.0,   0.0,   // look-at target
+            -200.0, 120.0, 300.0,
+             300.0,   0.0,   0.0,
                0.0,   1.0,   0.0
         );
 
-        // World grid anchored at origin
         draw_world_grid(0.0f, 0.0f);
 
-        // Ghost trail
         for (size_t i = 0; i < history.size(); ++i) {
             float age = (float)(history.size() - i) / history.size();
             glColor4f(0.2f, 0.6f, 1.0f, 0.2f * age);
@@ -140,7 +143,6 @@ if (e.key.keysym.sym == SDLK_RIGHT) {
             glPopMatrix();
         }
 
-        // Current projectile
         glColor4f(1,1,1,1);
         glPushMatrix();
         glTranslatef(
@@ -170,6 +172,12 @@ if (e.key.keysym.sym == SDLK_RIGHT) {
                  (unsigned long long)view.tick,
                  paused ? "PAUSED" : "RUNNING");
         draw_text(10, 20, buf);
+
+        char hashbuf[128];
+        snprintf(hashbuf, sizeof(hashbuf),
+                 "Hash: 0x%016llx",
+                 (unsigned long long)sim_hash(view));
+        draw_text(10, 35, hashbuf);
 
         glEnable(GL_DEPTH_TEST);
 
