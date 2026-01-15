@@ -67,7 +67,7 @@ int main(int argc, char **argv)
 
     bool paused = false;
     uint64_t view_tick = 0;
-
+    bool rewound = false;
     bool running = true;
     SDL_Event e;
 
@@ -77,17 +77,27 @@ int main(int argc, char **argv)
                 running = false;
 
             if (e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_SPACE)
-                    paused = !paused;
+                if (e.key.keysym.sym == SDLK_SPACE) {
+    if (paused && rewound) {
+        // Restore simulation to the viewed snapshot
+        state = history[view_tick];
+        history.resize(view_tick + 1);
+        rewound = false;
+    }
+    paused = !paused;
+}
+
 
                 if (e.key.keysym.sym == SDLK_LEFT) {
                     paused = true;
+                    rewound = true;
                     if (view_tick > 0)
                         view_tick--;
                 }
 
                 if (e.key.keysym.sym == SDLK_RIGHT) {
                     paused = true;
+                    rewound = true;
                     if (view_tick + 1 < history.size())
                         view_tick++;
                 }
