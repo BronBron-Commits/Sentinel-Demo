@@ -76,8 +76,17 @@ int main(int argc, char **argv)
             if (e.type == SDL_QUIT) running = false;
             if (e.type == SDL_KEYDOWN) {
                 if (e.key.keysym.sym == SDLK_SPACE) paused = !paused;
-                if (e.key.keysym.sym == SDLK_LEFT && view_tick > 0) view_tick--;
-                if (e.key.keysym.sym == SDLK_RIGHT && view_tick + 1 < history.size()) view_tick++;
+
+if (e.key.keysym.sym == SDLK_LEFT) {
+    paused = true;
+    if (view_tick > 0) view_tick--;
+}
+
+if (e.key.keysym.sym == SDLK_RIGHT) {
+    paused = true;
+    if (view_tick + 1 < history.size()) view_tick++;
+}
+
             }
         }
 
