@@ -1,48 +1,46 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
+#include <GL/glu.h>
+
 #include <cstdio>
 #include <cstdint>
 #include <deque>
-#include <cmath>
 
 #include <simcore/sim_state.hpp>
 #include <simcore/sim_update.hpp>
 #include <simcore/sim_hash.hpp>
 #include <simcore/sim_initial_state.hpp>
 
-static constexpr int WINDOW_W = 900;
-static constexpr int WINDOW_H = 600;
-static constexpr int HISTORY_LEN = 200;
+static constexpr int WINDOW_W = 1000;
+static constexpr int WINDOW_H = 700;
+static constexpr int HISTORY_LEN = 120;
 
-// Convert sim X to screen
-static int sim_x_to_screen(const SimState& s)
+/* Draw a cube centered at origin */
+static void draw_cube(float s)
 {
-    double x = s.x.to_double();
-    int px = static_cast<int>(x) % (WINDOW_W - 40);
-    if (px < 0) px += (WINDOW_W - 40);
-    return px + 20;
-}
+    float h = s * 0.5f;
+    glBegin(GL_QUADS);
 
-// Draw glowing square (multi-pass)
-static void draw_glow(SDL_Renderer* ren, int x, int y, int size,
-                      SDL_Color color, int layers)
-{
-    for (int i = layers; i >= 1; --i)
-    {
-        uint8_t a = static_cast<uint8_t>(color.a / (i + 1));
-        SDL_SetRenderDrawColor(ren, color.r, color.g, color.b, a);
+    // Front
+    glVertex3f(-h,-h, h); glVertex3f( h,-h, h);
+    glVertex3f( h, h, h); glVertex3f(-h, h, h);
+    // Back
+    glVertex3f(-h,-h,-h); glVertex3f(-h, h,-h);
+    glVertex3f( h, h,-h); glVertex3f( h,-h,-h);
+    // Left
+    glVertex3f(-h,-h,-h); glVertex3f(-h,-h, h);
+    glVertex3f(-h, h, h); glVertex3f(-h, h,-h);
+    // Right
+    glVertex3f( h,-h,-h); glVertex3f( h, h,-h);
+    glVertex3f( h, h, h); glVertex3f( h,-h, h);
+    // Top
+    glVertex3f(-h, h,-h); glVertex3f(-h, h, h);
+    glVertex3f( h, h, h); glVertex3f( h, h,-h);
+    // Bottom
+    glVertex3f(-h,-h,-h); glVertex3f( h,-h,-h);
+    glVertex3f( h,-h, h); glVertex3f(-h,-h, h);
 
-        SDL_Rect r = {
-            x - i,
-            y - i,
-            size + i * 2,
-            size + i * 2
-        };
-        SDL_RenderFillRect(ren, &r);
-    }
-
-    SDL_SetRenderDrawColor(ren, color.r, color.g, color.b, color.a);
-    SDL_Rect core = { x, y, size, size };
-    SDL_RenderFillRect(ren, &core);
+    glEnd();
 }
 
 int main(int argc, char **argv)
@@ -51,24 +49,30 @@ int main(int argc, char **argv)
 
     SDL_Init(SDL_INIT_VIDEO);
 
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+
     SDL_Window *win = SDL_CreateWindow(
-        "Sentinel Multiverse — Deterministic Timeline",
+        "Sentinel 3D Multiverse",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         WINDOW_W, WINDOW_H,
-        SDL_WINDOW_SHOWN
+        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
     );
 
-    SDL_Renderer *ren = SDL_CreateRenderer(
-        win, -1, SDL_RENDERER_ACCELERATED
-    );
+    SDL_GLContext glctx = SDL_GL_CreateContext(win);
+    SDL_GL_SetSwapInterval(1);
 
-    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glClearColor(0.05f, 0.06f, 0.1f, 1.0f);
 
-    // ---- sim-core state ----
+    // ---- sim-core ----
     SimState state = sim_initial_state();
-    state.vx = Fixed::from_int(3);   // deterministic motion
-    state.vy = Fixed::from_int(0);
+    state.vx = Fixed::from_int(2);
 
     std::deque<SimState> history;
 
@@ -81,10 +85,8 @@ int main(int argc, char **argv)
     while (running)
     {
         while (SDL_PollEvent(&e))
-        {
             if (e.type == SDL_QUIT)
                 running = false;
-        }
 
         uint32_t now = SDL_GetTicks();
         while (now - last_tick >= FIXED_DT_MS)
@@ -103,41 +105,42 @@ int main(int argc, char **argv)
             last_tick += FIXED_DT_MS;
         }
 
-        // ---- background ----
-        SDL_SetRenderDrawColor(ren, 5, 6, 12, 255);
-        SDL_RenderClear(ren);
+        // ---- render ----
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // ---- ghost trails ----
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        float aspect = (float)WINDOW_W / (float)WINDOW_H;
+        gluPerspective(60.0, aspect, 0.1, 100.0);
+
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+        glTranslatef(0.0f, -1.0f, -14.0f);
+
+        // ---- ghosts ----
         for (size_t i = 0; i < history.size(); ++i)
         {
-            float t = (float)i / (float)history.size();
-            uint8_t alpha = static_cast<uint8_t>(200 * (1.0f - t) * (1.0f - t));
+            float t = (float)i / history.size();
+            float z = -t * 10.0f;
 
-            int x = sim_x_to_screen(history[i]);
-            int y = WINDOW_H / 2;
-
-            SDL_Color ghost_color = {
-                80,
-                static_cast<uint8_t>(120 + 100 * (1.0f - t)),
-                255,
-                alpha
-            };
-
-            draw_glow(ren, x, y, 6, ghost_color, 2);
+            glColor4f(0.4f, 0.6f, 1.0f, 0.25f);
+            glPushMatrix();
+            glTranslatef(history[i].x.to_double() * 0.05f, 0.0f, z);
+            draw_cube(0.4f);
+            glPopMatrix();
         }
 
-        // ---- current timeline (bright + strong glow) ----
-        int cx = sim_x_to_screen(state);
-        int cy = WINDOW_H / 2;
+        // ---- current timeline ----
+        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        glPushMatrix();
+        glTranslatef(state.x.to_double() * 0.05f, 0.0f, 0.0f);
+        draw_cube(0.7f);
+        glPopMatrix();
 
-        SDL_Color current_color = { 255, 255, 255, 255 };
-        draw_glow(ren, cx, cy, 12, current_color, 5);
-
-        SDL_RenderPresent(ren);
-        SDL_Delay(1);
+        SDL_GL_SwapWindow(win);
     }
 
-    SDL_DestroyRenderer(ren);
+    SDL_GL_DeleteContext(glctx);
     SDL_DestroyWindow(win);
     SDL_Quit();
     return 0;

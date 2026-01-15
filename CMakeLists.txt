@@ -22,6 +22,9 @@ add_subdirectory(
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED sdl2)
 
+# ---- OpenGL ----
+find_package(OpenGL REQUIRED)
+
 # ---- demo executable ----
 add_executable(sentinel-demo
     src/main.cpp
@@ -37,8 +40,11 @@ target_link_libraries(sentinel-demo
     PRIVATE
         sentinel-orchestra
         ${SDL2_LIBRARIES}
+        OpenGL::GL
+        OpenGL::GLU
 )
 
 target_compile_options(sentinel-demo
-    PRIVATE ${SDL2_CFLAGS_OTHER}
+    PRIVATE
+        ${SDL2_CFLAGS_OTHER}
 )
