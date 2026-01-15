@@ -22,8 +22,9 @@ add_subdirectory(
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED sdl2)
 
-# ---- OpenGL ----
+# ---- OpenGL / GLU / GLUT ----
 find_package(OpenGL REQUIRED)
+find_package(GLUT REQUIRED)
 
 # ---- demo executable ----
 add_executable(sentinel-demo
@@ -42,9 +43,9 @@ target_link_libraries(sentinel-demo
         ${SDL2_LIBRARIES}
         OpenGL::GL
         OpenGL::GLU
+        GLUT::GLUT
 )
 
 target_compile_options(sentinel-demo
-    PRIVATE
-        ${SDL2_CFLAGS_OTHER}
+    PRIVATE ${SDL2_CFLAGS_OTHER}
 )

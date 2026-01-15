@@ -9,3 +9,4 @@ Makefile
 *.o
 *.d
 *.log
+src/sim_update.cpp
