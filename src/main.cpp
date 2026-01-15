@@ -66,8 +66,13 @@ int main(int argc, char **argv)
     history.reserve(20000);
 
     bool paused = false;
-    uint64_t view_tick = 0;
     bool rewound = false;
+    uint64_t view_tick = 0;
+
+    bool markers_computed = false;
+    uint64_t apex_tick = 0;
+    uint64_t impact_tick = 0;
+
     bool running = true;
     SDL_Event e;
 
@@ -78,15 +83,13 @@ int main(int argc, char **argv)
 
             if (e.type == SDL_KEYDOWN) {
                 if (e.key.keysym.sym == SDLK_SPACE) {
-    if (paused && rewound) {
-        // Restore simulation to the viewed snapshot
-        state = history[view_tick];
-        history.resize(view_tick + 1);
-        rewound = false;
-    }
-    paused = !paused;
-}
-
+                    if (paused && rewound) {
+                        state = history[view_tick];
+                        history.resize(view_tick + 1);
+                        rewound = false;
+                    }
+                    paused = !paused;
+                }
 
                 if (e.key.keysym.sym == SDLK_LEFT) {
                     paused = true;
@@ -109,6 +112,24 @@ int main(int argc, char **argv)
             history.push_back(state);
             view_tick = history.size() - 1;
 
+            if (!markers_computed && history.size() > 2) {
+                double max_y = history[0].y.to_double();
+                apex_tick = 0;
+
+                for (size_t i = 1; i < history.size(); ++i) {
+                    double y = history[i].y.to_double();
+                    if (y > max_y) {
+                        max_y = y;
+                        apex_tick = i;
+                    }
+                    if (y <= 0.0) {
+                        impact_tick = i;
+                        markers_computed = true;
+                        break;
+                    }
+                }
+            }
+
             if ((state.tick % 60) == 0) {
                 printf("tick=%llu hash=0x%016llx\n",
                        (unsigned long long)state.tick,
@@ -120,6 +141,8 @@ int main(int argc, char **argv)
             continue;
 
         const SimState &view = history[view_tick];
+        bool blink = markers_computed &&
+                     (view_tick == apex_tick || view_tick == impact_tick);
 
         glClearColor(0.02f, 0.02f, 0.04f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -142,7 +165,11 @@ int main(int argc, char **argv)
 
         for (size_t i = 0; i < history.size(); ++i) {
             float age = (float)(history.size() - i) / history.size();
-            glColor4f(0.2f, 0.6f, 1.0f, 0.2f * age);
+            if (blink && i == view_tick)
+                glColor4f(1.0f, 1.0f, 1.0f, 0.8f);
+            else
+                glColor4f(0.2f, 0.6f, 1.0f, 0.2f * age);
+
             glPushMatrix();
             glTranslatef(
                 history[i].x.to_double(),
@@ -153,6 +180,7 @@ int main(int argc, char **argv)
             glPopMatrix();
         }
 
+        /* ---------- CURRENT PROJECTILE + MARKER ---------- */
         glColor4f(1,1,1,1);
         glPushMatrix();
         glTranslatef(
@@ -161,6 +189,15 @@ int main(int argc, char **argv)
             0.0f
         );
         draw_cube(4.0f);
+
+        if (blink) {
+            glBegin(GL_LINE_LOOP);
+            for (int j = 0; j < 32; ++j) {
+                float a = (float)j / 32.0f * 2.0f * 3.1415926f;
+                glVertex3f(cosf(a) * 6.0f, sinf(a) * 6.0f, 0.0f);
+            }
+            glEnd();
+        }
         glPopMatrix();
 
         /* ---------- OVERLAY ---------- */
@@ -190,7 +227,6 @@ int main(int argc, char **argv)
         draw_text(10, 35, hashbuf);
 
         glEnable(GL_DEPTH_TEST);
-
         SDL_GL_SwapWindow(win);
     }
 
