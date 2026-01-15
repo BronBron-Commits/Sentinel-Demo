@@ -13,7 +13,10 @@
 
 static constexpr int WINDOW_W = 1000;
 static constexpr int WINDOW_H = 700;
-static constexpr int HISTORY_LEN = 120;
+static constexpr int HISTORY_LEN = 200;
+
+static constexpr float X_SCALE  = 0.02f;
+static constexpr float Z_SPREAD = 20.0f;
 
 /* Draw a cube centered at origin */
 static void draw_cube(float s)
@@ -21,24 +24,48 @@ static void draw_cube(float s)
     float h = s * 0.5f;
     glBegin(GL_QUADS);
 
-    // Front
-    glVertex3f(-h,-h, h); glVertex3f( h,-h, h);
-    glVertex3f( h, h, h); glVertex3f(-h, h, h);
-    // Back
-    glVertex3f(-h,-h,-h); glVertex3f(-h, h,-h);
-    glVertex3f( h, h,-h); glVertex3f( h,-h,-h);
-    // Left
-    glVertex3f(-h,-h,-h); glVertex3f(-h,-h, h);
-    glVertex3f(-h, h, h); glVertex3f(-h, h,-h);
-    // Right
-    glVertex3f( h,-h,-h); glVertex3f( h, h,-h);
-    glVertex3f( h, h, h); glVertex3f( h,-h, h);
-    // Top
-    glVertex3f(-h, h,-h); glVertex3f(-h, h, h);
-    glVertex3f( h, h, h); glVertex3f( h, h,-h);
-    // Bottom
-    glVertex3f(-h,-h,-h); glVertex3f( h,-h,-h);
-    glVertex3f( h,-h, h); glVertex3f(-h,-h, h);
+    glVertex3f(-h,-h, h); glVertex3f( h,-h, h); glVertex3f( h, h, h); glVertex3f(-h, h, h);
+    glVertex3f(-h,-h,-h); glVertex3f(-h, h,-h); glVertex3f( h, h,-h); glVertex3f( h,-h,-h);
+    glVertex3f(-h,-h,-h); glVertex3f(-h,-h, h); glVertex3f(-h, h, h); glVertex3f(-h, h,-h);
+    glVertex3f( h,-h,-h); glVertex3f( h, h,-h); glVertex3f( h, h, h); glVertex3f( h,-h, h);
+    glVertex3f(-h, h,-h); glVertex3f(-h, h, h); glVertex3f( h, h, h); glVertex3f( h, h,-h);
+    glVertex3f(-h,-h,-h); glVertex3f( h,-h,-h); glVertex3f( h,-h, h); glVertex3f(-h,-h, h);
+
+    glEnd();
+}
+
+/* Draw XZ ground grid */
+static void draw_grid()
+{
+    glColor4f(0.2f, 0.25f, 0.35f, 0.4f);
+    glBegin(GL_LINES);
+
+    for (int i = -20; i <= 20; ++i)
+    {
+        glVertex3f(i, 0.0f, -40.0f);
+        glVertex3f(i, 0.0f,  10.0f);
+
+        glVertex3f(-20.0f, 0.0f, i);
+        glVertex3f( 20.0f, 0.0f, i);
+    }
+
+    glEnd();
+}
+
+/* Draw forward direction arrow (+X) */
+static void draw_forward_arrow()
+{
+    glColor3f(1.0f, 0.4f, 0.2f);
+    glBegin(GL_LINES);
+
+    glVertex3f(0.0f, 0.02f, 0.0f);
+    glVertex3f(3.0f, 0.02f, 0.0f);
+
+    glVertex3f(3.0f, 0.02f, 0.0f);
+    glVertex3f(2.5f, 0.02f, 0.3f);
+
+    glVertex3f(3.0f, 0.02f, 0.0f);
+    glVertex3f(2.5f, 0.02f, -0.3f);
 
     glEnd();
 }
@@ -46,7 +73,6 @@ static void draw_cube(float s)
 int main(int argc, char **argv)
 {
     (void)argc; (void)argv;
-
     SDL_Init(SDL_INIT_VIDEO);
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -55,7 +81,7 @@ int main(int argc, char **argv)
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
     SDL_Window *win = SDL_CreateWindow(
-        "Sentinel 3D Multiverse",
+        "Sentinel 3D Multiverse (With Hash Output)",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         WINDOW_W, WINDOW_H,
@@ -75,9 +101,8 @@ int main(int argc, char **argv)
     state.vx = Fixed::from_int(2);
 
     std::deque<SimState> history;
-
-    const uint32_t FIXED_DT_MS = 16;
     uint32_t last_tick = SDL_GetTicks();
+    const uint32_t FIXED_DT_MS = 16;
 
     bool running = true;
     SDL_Event e;
@@ -105,36 +130,36 @@ int main(int argc, char **argv)
             last_tick += FIXED_DT_MS;
         }
 
-        // ---- render ----
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        float aspect = (float)WINDOW_W / (float)WINDOW_H;
-        gluPerspective(60.0, aspect, 0.1, 100.0);
+        gluPerspective(65.0, (float)WINDOW_W / WINDOW_H, 0.1, 300.0);
 
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
-        glTranslatef(0.0f, -1.0f, -14.0f);
+        glTranslatef(0.0f, -1.6f, -24.0f);
+        glRotatef(12.0f, 1.0f, 0.0f, 0.0f);
 
-        // ---- ghosts ----
+        draw_grid();
+        draw_forward_arrow();
+
         for (size_t i = 0; i < history.size(); ++i)
         {
             float t = (float)i / history.size();
-            float z = -t * 10.0f;
+            float z = -t * Z_SPREAD;
+            double dx = history[i].x.to_double() - state.x.to_double();
 
-            glColor4f(0.4f, 0.6f, 1.0f, 0.25f);
+            glColor4f(0.4f, 0.6f, 1.0f, 0.28f);
             glPushMatrix();
-            glTranslatef(history[i].x.to_double() * 0.05f, 0.0f, z);
-            draw_cube(0.4f);
+            glTranslatef(dx * X_SCALE, 0.0f, z);
+            draw_cube(0.45f);
             glPopMatrix();
         }
 
-        // ---- current timeline ----
         glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         glPushMatrix();
-        glTranslatef(state.x.to_double() * 0.05f, 0.0f, 0.0f);
-        draw_cube(0.7f);
+        draw_cube(0.8f);
         glPopMatrix();
 
         SDL_GL_SwapWindow(win);
