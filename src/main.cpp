@@ -62,6 +62,7 @@ int main(int argc, char **argv)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     SimState state = sim_initial_state();
+    const SimState initial_state = state;
     std::vector<SimState> history;
     history.reserve(20000);
 
@@ -80,6 +81,21 @@ int main(int argc, char **argv)
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT)
                 running = false;
+            
+            if (e.key.keysym.sym == SDLK_r) {
+    // Hard reset to tick 0
+    state = initial_state;
+    history.clear();
+    history.push_back(state);
+
+    view_tick = 0;
+    paused = false;
+    rewound = false;
+
+    markers_computed = false;
+    apex_tick = 0;
+    impact_tick = 0;
+}
 
             if (e.type == SDL_KEYDOWN) {
                 if (e.key.keysym.sym == SDLK_SPACE) {
@@ -288,7 +304,8 @@ glPopMatrix();
 
         glColor3f(1,1,1);
         draw_text(10, WINDOW_H - 20, "SPACE: Pause/Resume");
-        draw_text(10, WINDOW_H - 35, "LEFT/RIGHT: Scrub (paused)");
+        draw_text(10, WINDOW_H - 35, "LEFT/RIGHT: Scrub   R: Reset");
+
 
         char buf[128];
         snprintf(buf, sizeof(buf),
