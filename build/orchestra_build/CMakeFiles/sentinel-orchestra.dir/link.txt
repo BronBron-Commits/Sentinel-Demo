@@ -1,2 +1,0 @@
-/usr/bin/ar qc libsentinel-orchestra.a "CMakeFiles/sentinel-orchestra.dir/src/orchestra.cpp.o" "CMakeFiles/sentinel-orchestra.dir/src/simcore_system.cpp.o"
-/usr/bin/ranlib libsentinel-orchestra.a

@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/sentinel-sim-core.dir/link.d "CMakeFiles/sentinel-sim-core.dir/src/main.cpp.o" -o sentinel-sim-core  libsimcore.a

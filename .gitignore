@@ -1,0 +1,11 @@
+# build artifacts
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# editor / misc
+*.o
+*.d
+*.log

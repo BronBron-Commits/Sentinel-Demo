@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/test_rewind.dir/link.d CMakeFiles/test_rewind.dir/tests/test_rewind.cpp.o -o test_rewind  libsimcore.a
