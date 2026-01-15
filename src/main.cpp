@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     bool markers_computed = false;
     uint64_t apex_tick = 0;
     uint64_t impact_tick = 0;
-
+    static constexpr float IMPACT_FADE_TICKS = 30.0f; // how long the marker fades
     bool running = true;
     SDL_Event e;
 
@@ -144,6 +144,14 @@ int main(int argc, char **argv)
         bool blink = markers_computed &&
                      (view_tick == apex_tick || view_tick == impact_tick);
 
+float impact_alpha = 0.0f;
+if (markers_computed && view_tick >= impact_tick) {
+    float dt = (float)(view_tick - impact_tick);
+    if (dt < IMPACT_FADE_TICKS)
+        impact_alpha = 1.0f - (dt / IMPACT_FADE_TICKS);
+}
+
+
         glClearColor(0.02f, 0.02f, 0.04f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -162,6 +170,30 @@ int main(int argc, char **argv)
         );
 
         draw_world_grid(0.0f, 0.0f);
+/* ---------- IMPACT MARKER ---------- */
+if (impact_alpha > 0.0f) {
+    const SimState &impact = history[impact_tick];
+
+    glPushMatrix();
+    glTranslatef(
+        impact.x.to_double(),
+        0.01f,   // slightly above ground
+        0.0f
+    );
+
+    glColor4f(1.0f, 0.3f, 0.0f, impact_alpha); // red-orange
+
+    const float s = 4.0f; // size of cross
+    glBegin(GL_LINES);
+        glVertex3f(-s, -s, 0.0f);
+        glVertex3f( s,  s, 0.0f);
+
+        glVertex3f(-s,  s, 0.0f);
+        glVertex3f( s, -s, 0.0f);
+    glEnd();
+
+    glPopMatrix();
+}
 
         for (size_t i = 0; i < history.size(); ++i) {
             float age = (float)(history.size() - i) / history.size();
