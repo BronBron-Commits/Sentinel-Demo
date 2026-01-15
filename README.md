@@ -1,6 +1,3 @@
-## `README.md`
-
-```markdown
 # Sentinel Demo — Deterministic 3D Multiverse Visualization
 
 This repository is a **visual demonstration of deterministic simulation** using the Sentinel stack.  
